@@ -23,6 +23,7 @@ public class ProductService {
     private final MerchantService merchantService;
     private final MerchantStockService merchantStockService;
 
+
     ArrayList<Product> products = new ArrayList<>();
 
     public ArrayList<Product> getProducts() {
@@ -107,74 +108,6 @@ public class ProductService {
 
 
 
-
-
-    public ArrayList<Product> filter(String category, String price) {
-
-
-        ArrayList<Product> sortedProducts = new ArrayList<>(this.products);
-
-
-        if (category.equalsIgnoreCase("all")) {
-            sortedProducts = new ArrayList<>();
-            for (Product product : products) {
-
-                if (product.getCouponCode() != null
-                        && product.getDiscount() != 0
-                        && product.getUntil() != null
-                        && product.getUntil().isAfter(LocalDateTime.now())) {
-                    sortedProducts.add(new Product(
-                            product.getId(),
-                            product.getName(),
-                            (product.getPrice() * product.getDiscount() / 100.0),
-                            product.getCategoryId(),
-                            product.getCouponCode(),
-                            product.getDiscount(),
-                            product.getUntil()
-                    ));
-
-
-
-                }else {
-                    sortedProducts.add(product);
-                }
-            }
-
-        }else {
-            sortedProducts = new ArrayList<>();
-
-            for (Product product : products) {
-                if (categoryService.checkCategory(product.getCategoryId()).equals(category) &&
-                        product.getCouponCode() != null
-                        && product.getDiscount() > 0
-                        && product.getUntil() != null
-                        && product.getUntil().isAfter(LocalDateTime.now())) {
-
-                    sortedProducts.add(new Product(
-                            product.getId(),
-                            product.getName(),
-                            (product.getPrice() * product.getDiscount() / 100.0),
-                            product.getCategoryId(),
-                            product.getCouponCode(),
-                            product.getDiscount(),
-                            product.getUntil()
-                    ));
-
-                }else if (categoryService.checkCategory(product.getCategoryId()).equals(category)){
-                    sortedProducts.add(product);
-                }
-            }
-
-        }
-        if (price.equalsIgnoreCase("DESC") ) {
-            sortedProducts.sort(Comparator.comparingDouble(Product::getPrice).reversed());
-        } else if (price.equalsIgnoreCase("ASC")) {
-            sortedProducts.sort(Comparator.comparingDouble(Product::getPrice));
-        }
-
-
-        return sortedProducts;
-    }
 
 
     //__________________________________Extra method____________________________

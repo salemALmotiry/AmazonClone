@@ -1,16 +1,16 @@
 package com.example.amazonclone.Controller;
 
 import com.example.amazonclone.ApiResponse.ApiResponse;
+import com.example.amazonclone.Model.Product;
 import com.example.amazonclone.Model.User;
-import com.example.amazonclone.Service.MerchantService;
-import com.example.amazonclone.Service.MerchantStockService;
-import com.example.amazonclone.Service.ProductService;
 import com.example.amazonclone.Service.UserService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
 
 
 @RestController
@@ -112,14 +112,11 @@ public class UserController {
 
 
 
-    @PutMapping("/gif-gift/{userId}/{giftedId}/{merchantId}/{productId}")
-    public ResponseEntity gifGift(@PathVariable String userId, @PathVariable String giftedId, @PathVariable String merchantId, @PathVariable String productId){
+    @PutMapping("/gif-gift/{userId}/{giftedEmail}/{merchantId}/{productId}")
+    public ResponseEntity gifGift(@PathVariable String userId, @PathVariable String giftedEmail, @PathVariable String merchantId, @PathVariable String productId){
 
-        if (giftedId.equals(userId)){
-            return ResponseEntity.status(400).body(new ApiResponse("You cannot gift to yourself."));
 
-        }
-        String response = userService.gifGift(userId,giftedId,productId,merchantId);
+        String response = userService.gifGift(userId,giftedEmail,productId,merchantId);
 
         if (response == null){
             return ResponseEntity.status(200).body(new ApiResponse("Gifted user has been successfully gifted"));
@@ -131,25 +128,42 @@ public class UserController {
     }
 
 
-    @PutMapping("/puy-now-pay-letter/{userId}/{merchantId}/{productId}")
-    public ResponseEntity installment(@PathVariable String userId, @PathVariable String merchantId, @PathVariable String productId){
 
+    @GetMapping("/recommendation/{userId}")
+    public ResponseEntity recommendation(@PathVariable String userId) {
 
-        String response = userService.installment(productId,userId,merchantId);
+        if (!userService.checkUser(userId)){
+            return ResponseEntity.status(400).body(new ApiResponse("User not found in the system."));
+        }
 
-        if (response == null){
-            return ResponseEntity.status(200).body(new ApiResponse("Item has been purchased. Your next payment is due in 30 days."));
+        ArrayList<Product> products = userService.recommendationProducts(userId);
+
+        if (products != null){
+            return ResponseEntity.status(200).body(products);
 
         }
-        return ResponseEntity.status(400).body(new ApiResponse(response));
+        return ResponseEntity.status(400).body(new ApiResponse("User do not make ant perches"));
     }
 
+
+    @GetMapping("/best/{userId}/{limit}")
+    public ResponseEntity bestSelling(@PathVariable String userId,@PathVariable int limit) {
+        if (!userService.checkUser(userId)){
+            return ResponseEntity.status(400).body(new ApiResponse("User not found in the system."));
+        }
+        ArrayList<Product> products = userService.bestSelling(limit);
+
+        if (!products.isEmpty()){
+            return ResponseEntity.status(200).body(products);
+
+        }
+        return ResponseEntity.status(400).body(new ApiResponse("There is no best product available at this time"));
+    }
 
 
     //____________________________Extra__________________________________--
     @PutMapping("/pay-with-coupon/{userId}/{merchantId}/{productId}/{coupon}")
-    public ResponseEntity payWithCoupon(@PathVariable String userId, @PathVariable String merchantId, @PathVariable String productId,@PathVariable String coupon)
-    {
+    public ResponseEntity payWithCoupon(@PathVariable String userId, @PathVariable String merchantId, @PathVariable String productId,@PathVariable String coupon) {
 
 
         String response = userService.payWithCoupon(productId,userId,merchantId,coupon);

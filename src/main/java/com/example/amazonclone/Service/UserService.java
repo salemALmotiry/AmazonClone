@@ -1,7 +1,6 @@
 package com.example.amazonclone.Service;
 
 
-import com.example.amazonclone.Model.MerchantStock;
 import com.example.amazonclone.Model.Product;
 import com.example.amazonclone.Model.User;
 import lombok.AllArgsConstructor;
@@ -11,7 +10,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @AllArgsConstructor
@@ -54,8 +55,6 @@ public class UserService {
 
 
         user.setPurchaseHistory(new ArrayList<Product>());
-        user.setShippingCart(new ArrayList<Product>());
-        user.setBuyNowAndPayLetter(new ArrayList<Double>());
         user.setPassword(this.hash(user.getPassword()));
 
         this.users.add(user);
@@ -68,6 +67,14 @@ public class UserService {
         for (int i = 0; i < this.users.size(); i++) {
 
             if (this.users.get(i).getId().equals(id)){
+                if (user.getPurchaseHistory() != null) {
+                    user.setPurchaseHistory(user.getPurchaseHistory());
+                }else
+                    user.setPurchaseHistory(new ArrayList<Product>());
+
+                if (user.getPassword() != null) {
+                    user.setPassword(this.hash(user.getPassword()));
+                }
                 this.users.set(i,user);
                 return true;
             }
@@ -157,7 +164,18 @@ public class UserService {
         return response;
     }
 
-    public String gifGift(String gifterid,String giftedId,String productId ,String merchantId){
+    public String gifGift(String gifterid,String giftedEmail,String productId ,String merchantId){
+
+        String giftedId = null;
+        for (User user:this.users){
+            if (user.getEmail().equals(giftedEmail) && !user.getId().equals(gifterid)){
+                giftedId = user.getId();
+            }
+        }
+        if (giftedId == null){
+            return "You cannot gift to yourself.";
+        }
+
 
         ArrayList verifyStatus =  verifyTransaction(productId, gifterid, merchantId);
 
@@ -192,44 +210,6 @@ public class UserService {
 
 
 
-
-
-
-        return response;
-    }
-
-
-    public String installment(String productId,String userId,String merchantId){
-        ArrayList verifyStatus =  verifyTransaction(productId, userId, merchantId);
-
-        User user = (User) verifyStatus.get(0);
-        Product product = (Product) verifyStatus.get(1);
-        String response = (String) verifyStatus.get(2);
-
-        if (product == null || user == null || response != null){
-            return response;
-        }
-
-
-        if(user.getBuyNowAndPayLetter().isEmpty()){
-            double singlePayment = product.getPrice()/4;
-
-            if (singlePayment>user.getBalance()){
-            response = "The first payment of"+singlePayment+" SAR exceeds the user's balance.";
-        }else {
-            if(!merchantStockService.reStock(merchantId,-1)){
-                response = "Item is out of stock";
-            }else {
-
-                user.setBalance(user.getBalance()-singlePayment);
-                user.getPurchaseHistory().add(product);
-                user.setBuyNowAndPayLetter( new ArrayList<Double>(List.of(singlePayment,singlePayment,singlePayment)));
-                response  = null;
-
-                }
-            }
-        }else
-            response = "The user already has "+user.getBuyNowAndPayLetter().size()+"-month payment plan of "+user.getBuyNowAndPayLetter().get(0)+" SAR";
 
 
 
@@ -273,9 +253,97 @@ public class UserService {
         return "User not found in the system";
     }
 
-    //___________________________________Extra__________________________________
-    //applying the discount by coupon
-    public String payWithCoupon(String productId,String userId,String merchantId,String couponCode){
+/**
+ * Generates a list of recommended products for a user based on their purchase history.
+ *
+ * This method analyzes the purchase history of the user with the specified user ID,
+ * identifies the most frequently purchased category, and recommends products from that
+ * category that the user has not yet bought. The recommended products are returned
+ * as a list of `Product` objects.
+ **/
+
+ public ArrayList<Product> recommendationProducts(String userId){
+        ArrayList<Product> recommendationProducts = new ArrayList<>();
+        User user = null;
+        for (User u : users){
+            if(u.getId().equals(userId)){
+                user = u;
+            }
+        }
+
+
+        assert user != null;
+        if (user.getPurchaseHistory() == null || user.getPurchaseHistory().isEmpty()) {
+            return null;
+        }
+
+        String mostRepeated = getMostRepeated();
+
+
+        // Recommend products the user has not purchased.
+        for (Product product : productService.getProducts()){
+            if (product.getCategoryId().equals(mostRepeated) && !user.getPurchaseHistory().contains(product)){
+                recommendationProducts.add(product);
+            }
+
+        }
+
+        return recommendationProducts;
+    }
+
+
+
+/**
+ * Generates a list of the best-selling products based on user purchase history.
+ *
+ * This method calculates the most frequently purchased products by all users and
+ * returns a list of the top `limit` best-selling products. The products are ranked
+ * by the number of times they have been purchased, in descending order.
+ */
+ public ArrayList<Product> bestSelling(int limit){
+        ArrayList<Product> recommendationProducts = new ArrayList<>();
+
+        // Product as the key and the number of times it has been purchased as the value
+        Map<Product, Integer> productCountMap = new HashMap<>();
+
+        // Loop through all users and their purchase history
+        for (User user : users) {
+            for (Product purchasedProduct : user.getPurchaseHistory()) {
+                productCountMap.put(purchasedProduct, productCountMap.getOrDefault(purchasedProduct, 0) + 1);
+            }
+        }
+
+
+        // Convert the map entries to a list and sort by count
+
+        List<Map.Entry<Product, Integer>> sortedList = sort(productCountMap);
+
+
+        int count = 0;
+        for (Map.Entry<Product, Integer> entry : sortedList) {
+            if (count >= limit && entry.getKey() !=null)
+                break;
+            Product product = entry.getKey();
+            int productCount = entry.getValue();
+            count++;
+            recommendationProducts.add(product);
+        }
+
+        return recommendationProducts;
+    }
+
+
+
+//___________________________________Extra__________________________________
+/**
+ * Processes a payment for a product using a coupon code.
+ *
+ * This method performs a transaction check to verify that the product, user, and
+ * coupon code are valid. If valid, it applies the coupon discount and deducts the
+ * discounted price from the user's balance. It also checks if the product is in stock.
+ */
+
+ public String payWithCoupon(String productId,String userId,String merchantId,String couponCode){
         ArrayList verifyStatus =  verifyTransaction(productId, userId, merchantId);
 
         User user = (User) verifyStatus.get(0);
@@ -318,6 +386,31 @@ public class UserService {
         return response;
     }
 
+
+
+    //___________________________________________________________________________________-
+
+    private String getMostRepeated() {
+        String mostRepeated = "";
+        int maxCount = 0;
+
+        for (Product currentProduct : productService.getProducts()) {
+            int count = 0;
+
+            for (Product product : productService.getProducts()) {
+                if (currentProduct.getCategoryId().equals(product.getCategoryId())) {
+                    count++;
+                }
+            }
+
+            if (count > maxCount) {
+                mostRepeated = currentProduct.getCategoryId();
+                maxCount = count;
+            }
+        }
+        return mostRepeated;
+    }
+
     private ArrayList verifyTransaction(String productId, String userId, String merchantId) {
         User user = null;
         String response = null;
@@ -339,6 +432,7 @@ public class UserService {
         if (!merchantService.checkMerchant(merchantId)){
             response =  "Merchant not found in the system.";
         }
+
         if (user == null)
             response = "User not in the system.";
 
@@ -350,5 +444,28 @@ public class UserService {
         temp.add(response);
         return temp;
     }
+
+    private List<Map.Entry<Product, Integer>> sort(Map<Product, Integer> productCountMap) {
+        List<Map.Entry<Product, Integer>> sortedList = new ArrayList<>(productCountMap.entrySet());
+
+        for (int i = 0; i < sortedList.size(); i++) {
+            int maxIndex = i;
+            for (int j = i + 1; j < sortedList.size(); j++) {
+                if (sortedList.get(j).getValue() > sortedList.get(maxIndex).getValue()) {
+                    maxIndex = j;
+                }
+            }
+
+            if (maxIndex != i) {
+                Map.Entry<Product, Integer> temp = sortedList.get(i);
+                sortedList.set(i, sortedList.get(maxIndex));
+                sortedList.set(maxIndex, temp);
+            }
+        }
+        return sortedList;
+    }
+
+
+
 
 }

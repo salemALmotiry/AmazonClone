@@ -73,7 +73,5 @@ public class User {
     private ArrayList<Product> purchaseHistory;
 
 
-    @JsonIgnore
-    private ArrayList<Product> shippingCart ;
 
 }

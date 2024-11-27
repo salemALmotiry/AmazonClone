@@ -105,18 +105,6 @@ public class ProductController {
     }
 
 
-    @GetMapping("/filter/{category}/{orderBy}")
-    public ResponseEntity filter(@PathVariable String category,@PathVariable String orderBy) {
-
-         ArrayList products = productService.filter(category, orderBy);
-        if (products.isEmpty()){
-            return  ResponseEntity.status(200).body(new ApiResponse("No product available"));
-
-        }
-        return  ResponseEntity.status(200).body(products);
-
-    }
-
 
     //_______________________________Extra____________________________________
     @GetMapping("/merchant-products/{merchantId}")
