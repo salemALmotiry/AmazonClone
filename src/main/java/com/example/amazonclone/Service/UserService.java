@@ -105,6 +105,7 @@ public class UserService {
         return false;
     }
 
+    /// _____________________12 Endpoint_______________________________
 
     public String directPaying(String productId,String userId,String merchantId){
         ArrayList verifyStatus =  verifyTransaction(productId, userId, merchantId);
@@ -133,6 +134,8 @@ public class UserService {
 
         return response;
     }
+
+    /// ____________________________ Extra Endpoints_______________________________
 
     public String refund(String productId,String userId,String merchantId){
 
@@ -163,6 +166,8 @@ public class UserService {
 
         return response;
     }
+
+
 
     public String gifGift(String gifterid,String giftedEmail,String productId ,String merchantId){
 
@@ -334,7 +339,6 @@ public class UserService {
 
 
 
-//___________________________________Extra__________________________________
 /**
  * Processes a payment for a product using a coupon code.
  *
